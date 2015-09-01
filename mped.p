@@ -11,6 +11,7 @@ program mped.v1.0;
 
 uses
    Display,
+   Environment,
    Strings;
 
 {$i readstr.inc}
@@ -29,6 +30,44 @@ begin
    Halt(0);
 end;
 
+procedure LoadScreen(Which:Byte);
+begin
+   CurrentFile:=Which;
+   Files[Which].Active:=True;
+   ActualFile.setText(Files[Which].ActualFile.getText());
+   Modified:=Files[Which].Modified;
+   InsertMode:=Files[Which].InsertMode;
+   ActualTopLine:=Files[Which].ActualTopLine;
+   LineDoingOffset:=Files[Which].LineDoingOffset;
+   LineOffset:=Files[Which].LineOffset;
+   ScrollBuffer(0); // Draw new screen
+   If (Files[Which].Filename<>'') then begin
+      TextColor(DarkGray);
+      GotoXy(1,23);
+      ClrEol;
+      Write('FILE: ',Files[Which].Filename);
+      TextColor(LightGreen);
+   End
+   else begin
+      GotoXy(1,23);
+      ClrEol;
+   end;
+   GotoXy(Files[Which].AtX,Files[Which].AtY);
+end;
+
+procedure SaveScreen(Which:Byte);
+begin
+   Files[Which].Active:=False;
+   Files[Which].ActualFile.setText(ActualFile.getText());
+   Files[Which].Modified:=Modified;
+   Files[Which].InsertMode:=InsertMode;
+   Files[Which].ActualTopLine:=ActualTopLine;
+   Files[Which].AtX:=WhereX;
+   Files[Which].AtY:=WhereY;
+   Files[Which].LineDoingOffset:=LineDoingOffset;
+   Files[Which].LineOffset:=LineOffset;
+end;
+
 procedure openEditor;
 var
    Ch:Char;
@@ -37,13 +76,27 @@ var
    Cmd,Ws:String;
 
 begin
+   For Loop:=1 to 9 do begin
+      With Files[Loop] do begin
+         Active:=False;
+         Filename:='';
+         ActualFile.Init();
+         Modified:=False;
+         InsertMode:=False;
+         ActualTopLine:=0;
+         AtX:=1;
+         AtY:=1;
+         LineDoingOffset:=0;
+         LineOffset:=1;
+      End;
+   End;
    showMenu;
    TextColor(LightGray);
    TextBackground(Black);
    ClrScr;
    ActualFile.Init();
-   ActualTopLine:=0;
-   loadBuffer();
+//   loadBuffer();
+   LoadScreen(1);
    While not quit do begin
       showStatus;
       Ch:=ReadKey;
@@ -52,27 +105,64 @@ begin
          If Ord(ch)=132 then Begin // Ctrl-PgUp
             ScrollBuffer(-11);
             Continue;
-         End; // CASE is not trapping #132! switched to ORD
+         End // CASE is not trapping #132! switched to ORD
+         else if Ord(Ch)=130 then Begin // Alt+-
+            SaveScreen(CurrentFile);
+            Dec(CurrentFile);
+            If CurrentFile<1 then CurrentFile:=9;
+            LoadScreen(CurrentFile);
+            Continue;
+         End
+         else If Ord(Ch)=131 then Begin // Alt+=
+            SaveScreen(CurrentFile);
+            Inc(CurrentFile);
+            If CurrentFile>9 then CurrentFile:=1;
+            LoadScreen(CurrentFile);
+            Continue;
+         End;
          Case Ch of
             #77:Begin // Right Arrow
                AtX:=WhereX;
-               Wn:=Length(ActiveBuffer[WhereY]);
+               AtY:=WhereY;
+               Wn:=Length(ActiveBuffer[AtY]);
                If (AtX<=Wn) then begin
                   If AtX=80 then begin // scroll line
-
+                     LineDoingOffset:=ActualTopLine+AtY;
+                     If (LineOffset+79<Length(ActiveBuffer[AtY])+1) then begin
+                        Inc(LineOffset);
+                        GotoXy(1,AtY);
+                        Write(Copy(ActiveBuffer[AtY],LineOffset,80));
+                        GotoXy(80,AtY);
+                        If (LineOffset+79>Length(ActiveBuffer[AtY])) then ClrEol;
+                     End;
                   End
-                  Else GotoXy(AtX+1,WhereY);
+                  Else GotoXy(AtX+1,AtY);
                end
                else Write(#7);
             End;
             #75:Begin // Left Arrow
                AtX:=WhereX;
+               AtY:=WhereY;
                If (AtX>1) then begin
-                  GotoXy(AtX-1,WhereY);
+                  GotoXy(AtX-1,AtY);
                end
-               else Write(#7);
+               else begin
+                  if (LineDoingOffset<>0) then begin
+                     If LineOffset>1 then begin
+                        Dec(Lineoffset);
+                        GotoXy(1,AtY);
+                        Write(Copy(ActiveBuffer[WhereY],LineOffset,80));
+                        GotoXy(1,AtY);
+                     End
+                     Else LineDoingOffset:=0;
+                  end
+                  else Write(#7);
+               end;
             End;
             #72:Begin // Up Arrow
+               If (LineDoingOffset<>0) then ScrollBuffer(0); // optimize later!
+               LineDoingOffset:=0;
+               LineOffset:=1;
                AtY:=WhereY;
                If AtY+ActualTopLine<=ActualFile.getCount() then begin
                   If AtY=1 then ScrollBuffer(-1)
@@ -83,6 +173,9 @@ begin
                End;
             End;
             #80:Begin // Down Arrow
+               If (LineDoingOffset<>0) then ScrollBuffer(0); // optimize later!
+               LineDoingOffset:=0;
+               LineOffset:=1;
                AtY:=WhereY;
                If AtY+ActualTopLine+1<=ActualFile.getCount() then begin
                   If AtY=22 then ScrollBuffer(1)
@@ -94,29 +187,99 @@ begin
             End;
 ////////////////////////////////////
             #115:Begin // Ctrl-Left Arrow
+               AtX:=WhereX;
+               If AtX>1 then begin
+                  Loop:=AtX;
+                  While Loop>1 do begin
+                     Dec(Loop);
+                     Ws:=Copy(ActiveBuffer[WhereY],Loop,1);
+                     If (Ws=#32) or
+                        Pos(Ws,'!@#$%^&*:=-+<>/?.')>0 then break;
+                  End;
+                  If Loop<2 then Loop:=2;
+                  GotoXy(Loop-1,WhereY);
+               End;
             End;
             #116:Begin // Ctrl-Right Arrow
+               AtX:=WhereX;
+               If AtX<Length(ActiveBuffer[WhereY]) then begin
+                  Loop:=AtX;
+                  if copy(ActiveBuffer[WhereY],Loop,1)=#32 then begin
+                     while (Loop<=Length(ActiveBuffer[WhereY])) and
+                        (copy(ActiveBuffer[WhereY],Loop,1)=#32) do Inc(Loop);
+                     Dec(Loop);
+                  end
+                  else begin
+                     While Loop<=Length(ActiveBuffer[WhereY]) do begin
+                        Inc(Loop);
+                        Ws:=Copy(ActiveBuffer[WhereY],Loop,1);
+                        If (Ws=#32) or
+                           Pos(Ws,'!@#$%^&*,:=-+<>/?.()[]{}')>0 then break;
+                     End;
+                  end;
+                  If Loop>Length(ActiveBuffer[WhereY]) then Loop:=Length(ActiveBuffer[WhereY]);
+                  GotoXy(Loop+1,WhereY);
+               End;
             End;
             #132:Begin // Ctrl-PgUp
+               LineDoingOffset:=0;
+               LineOffset:=1;
                ScrollBuffer(-11);
             End;
             #118:Begin // Ctrl-PgDn
+               LineDoingOffset:=0;
+               LineOffset:=1;
                ScrollBuffer(11);
+            End;
+            #117:Begin // Ctrl-End
+               If ActualFile.getCount()>22 then begin
+                  ActualTopLine:=ActualFile.getCount()-22;
+                  GotoXy(Length(ActiveBuffer[22])+1,22);
+               end
+               Else begin
+                  ActualTopLine:=0;
+                  GotoXy(Length(ActiveBuffer[ActualFile.getCount()])+1,ActualFile.getCount());
+               End;
+               ScrollBuffer(0);
+            End;
+            #119:Begin // Ctrl-Home
+               ActualTopLine:=0;
+               ScrollBuffer(0);
+               GotoXy(1,1);
             End;
 ////////////////////////////////////
             #70:Begin // BREAK
             End;
             #71:Begin // HOME
-               GotoXy(1, WhereY);
+               AtY:=WhereY;
+               GotoXy(1, AtY);
+               Write(Copy(ActiveBuffer[AtY],1,80));
+               If AtY=WhereY then ClrEol;
+               GotoXy(1, AtY);
             End;
             #79:Begin // END
-               Wn:=Length(ActiveBuffer[WhereY]);
-               If Wn<80 then GotoXy(Wn+1, WhereY);
+               AtY:=WhereY;
+               Wn:=Length(ActiveBuffer[AtY]);
+               If Wn<80 then GotoXy(Wn+1, AtY)
+               else begin
+                  LineDoingOffset:=ActualTopLine+AtY;
+                  If (LineOffset+79<Length(ActiveBuffer[AtY])+1) then begin
+                     LineOffset:=Length(ActiveBuffer[AtY])-78;
+                     GotoXy(1,AtY);
+                     Write(Copy(ActiveBuffer[AtY],LineOffset,80));
+                     GotoXy(80,AtY);
+                     If (LineOffset+79>Length(ActiveBuffer[AtY])) then ClrEol;
+                  End;
+               End;
             End;
             #73:Begin // PGUP
+               LineDoingOffset:=0;
+               LineOffset:=1;
                ScrollBuffer(-22);
             End;
             #81:Begin // PGDN
+               LineDoingOffset:=0;
+               LineOffset:=1;
                ScrollBuffer(22);
             End;
 ////////////////////////////////////
@@ -170,8 +333,8 @@ begin
             End;
             #48:Begin // Alt-B
             End;
-// Alt-C
-// Save
+            #46:Begin // Alt-C
+            End;
             #32:Begin // Alt-D
             End;
             #18:Begin // Alt-E
@@ -199,6 +362,23 @@ begin
             End;
             #24:Begin // Alt-O
 // Open File
+               Cmd:=CommandLine('Filename: ',70);
+               if (cmd<>'') then begin
+                  If not FileExists(Cmd) then begin
+                     GotoXy(1,23);
+                     TextBackground(Red);
+                     ClrEol;
+                     TextColor(Yellow);
+                     Write('File not found: '+Cmd);
+                  End
+                  Else Begin
+                     Files[CurrentFile].Filename:=Cmd;
+                     ActualTopLine:=0;
+                     ActualFile.LoadFromFile(Cmd);
+                     loadBuffer();
+                     SaveScreen(CurrentFile);
+                  End;
+               end;
             End;
             #25:Begin // Alt-P
             End;
@@ -223,30 +403,63 @@ begin
             End;
             #21:Begin // Alt-Y
             End;
-// Alt-Z
+            #44:Begin // Alt-Z
+            End;
             #120:Begin // Alt-1
+               If CurrentFile<>1 then begin
+                  SaveScreen(CurrentFile);
+                  LoadScreen(1);
+               End;
             End;
             #121:Begin // Alt-2
+               If CurrentFile<>2 then begin
+                  SaveScreen(CurrentFile);
+                  LoadScreen(2);
+               End;
             End;
             #122:Begin // Alt-3
+               If CurrentFile<>3 then begin
+                  SaveScreen(CurrentFile);
+                  LoadScreen(3);
+               End;
             End;
             #123:Begin // Alt-4
+               If CurrentFile<>4 then begin
+                  SaveScreen(CurrentFile);
+                  LoadScreen(4);
+               End;
             End;
             #124:Begin // Alt-5
+               If CurrentFile<>5 then begin
+                  SaveScreen(CurrentFile);
+                  LoadScreen(5);
+               End;
             End;
             #125:Begin // Alt-6
+               If CurrentFile<>6 then begin
+                  SaveScreen(CurrentFile);
+                  LoadScreen(6);
+               End;
             End;
             #126:Begin // Alt-7
+               If CurrentFile<>7 then begin
+                  SaveScreen(CurrentFile);
+                  LoadScreen(7);
+               End;
             End;
             #127:Begin // Alt-8
+               If CurrentFile<>8 then begin
+                  SaveScreen(CurrentFile);
+                  LoadScreen(8);
+               End;
             End;
             #128:Begin // Alt-9
+               If CurrentFile<>9 then begin
+                  SaveScreen(CurrentFile);
+                  LoadScreen(9);
+               End;
             End;
             #129:Begin // Alt-0
-            End;
-            #130:Begin // Alt+-
-            End;
-            #131:Begin // Alt+=
             End;
 ////////////////////////////////////
             #2:Begin // Ctrl-1
@@ -338,15 +551,47 @@ begin
             End;
             #6:Begin // CTRL-F
             End;
+            #7:Begin // CTRL-G
+               Cmd:=GotoLine;
+               If (Cmd<>'') then begin
+                  Wn:=StrToIntDef(Cmd,ActualTopLine);
+                  If (Wn<>ActualTopLine) then begin
+                     If Wn>ActualTopLine+11 then begin
+                        If (Wn>ActualFile.getCount()) then Wn:=ActualFile.getCount();
+                        ActualTopLine:=Wn-11;
+                        If ActualTopLine<0 then ActualTopLine:=0;
+                        ScrollBuffer(0);
+                        GotoXy(1,11);
+                     End
+                     Else Begin
+                        If (Wn>ActualFile.getCount()) then Wn:=ActualFile.getCount();
+                        GotoXy(1,Wn);
+                     End;
+                  End;
+               End;
+            End;
             #14:Begin // CTRL-N
 // NEW
             End;
             #15:Begin // CTRL-O
 // OPEN
                Cmd:=CommandLine('Filename: ',70);
-               ActualTopLine:=0;
-               ActualFile.LoadFromFile(Cmd);
-               loadBuffer();
+               if (cmd<>'') then begin
+                  If not FileExists(Cmd) then begin
+                     GotoXy(1,23);
+                     TextBackground(Red);
+                     ClrEol;
+                     TextColor(Yellow);
+                     Write('File not found: '+Cmd);
+                  End
+                  Else Begin
+                     Files[CurrentFile].Filename:=Cmd;
+                     ActualTopLine:=0;
+                     ActualFile.LoadFromFile(Cmd);
+                     loadBuffer();
+                     SaveScreen(CurrentFile);
+                  End;
+               end;
             End;
             #16:Begin // CTRL-P
             End;
@@ -356,7 +601,16 @@ begin
             End;
             #21:Begin // CTRL-U
             End;
-            #23:Begin // CTRL-X
+            #22:Begin // CTRL-V
+            End;
+            #23:Begin // CTRL-W
+               TextColor(Green);
+               ScrollBuffer(0);
+               ShowWindows;
+               TextColor(LightGreen);
+               ScrollBuffer(0);
+            End;
+            #24:Begin // CTRL-X
 // EXIT
                Quit:=True;
             End;
