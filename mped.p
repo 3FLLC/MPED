@@ -106,14 +106,14 @@ begin
             ScrollBuffer(-11);
             Continue;
          End // CASE is not trapping #132! switched to ORD
-         else if Ord(Ch)=130 then Begin // Alt+-
+         else if (Ord(Ch)=130) or (Ord(Ch)=12) then Begin // Alt+- or Ctrl+-
             SaveScreen(CurrentFile);
             Dec(CurrentFile);
             If CurrentFile<1 then CurrentFile:=9;
             LoadScreen(CurrentFile);
             Continue;
          End
-         else If Ord(Ch)=131 then Begin // Alt+=
+         else If (Ord(Ch)=131) or (Ord(Ch)=13) then Begin // Alt+= or Ctrl+=
             SaveScreen(CurrentFile);
             Inc(CurrentFile);
             If CurrentFile>9 then CurrentFile:=1;
@@ -287,6 +287,7 @@ begin
                InsertMode:=Not InsertMode;
             End;
             #83:Begin // DEL
+               Modified:=True;
                AtX:=WhereX;
                If Copy(ActiveBuffer[WhereY],AtX,1)<>'' then begin
                   Delete(ActiveBuffer[WhereY],AtX,1);
@@ -300,6 +301,7 @@ begin
             #15:Begin // Shift Tab
                AtX:=WhereX;
                If InsertMode then begin
+                  Modified:=True;
                   If Atx>3 then begin
                      If Copy(ActiveBuffer[WhereY],AtX-2,3)='   ' then begin
                         Delete(ActiveBuffer[WhereY],AtX-2,3);
@@ -320,13 +322,10 @@ begin
             End;
 ////////////////////////////////////
             #59:Begin // F1
-
             End;
             #68:Begin // F10
-
             End;
             #134:Begin // F12
-
             End;
 ////////////////////////////////////
             #30:Begin // Alt-A
@@ -396,6 +395,11 @@ begin
             #47:Begin // Alt-V
             End;
             #17:Begin // Alt-W
+               TextColor(Green);
+               ScrollBuffer(0);
+               ShowWindows;
+               TextColor(LightGreen);
+               ScrollBuffer(0);
             End;
             #45:Begin // Alt-X
 // Exit
@@ -405,54 +409,63 @@ begin
             End;
             #44:Begin // Alt-Z
             End;
+            #2:Continue; // Ctrl-1
             #120:Begin // Alt-1
                If CurrentFile<>1 then begin
                   SaveScreen(CurrentFile);
                   LoadScreen(1);
                End;
             End;
+            #3:Continue; // Ctrl-2
             #121:Begin // Alt-2
                If CurrentFile<>2 then begin
                   SaveScreen(CurrentFile);
                   LoadScreen(2);
                End;
             End;
+            #4:Continue; // Ctrl-3
             #122:Begin // Alt-3
                If CurrentFile<>3 then begin
                   SaveScreen(CurrentFile);
                   LoadScreen(3);
                End;
             End;
+            #5:Continue; // Ctrl-4
             #123:Begin // Alt-4
                If CurrentFile<>4 then begin
                   SaveScreen(CurrentFile);
                   LoadScreen(4);
                End;
             End;
+            #6:Continue; // Ctrl-5
             #124:Begin // Alt-5
                If CurrentFile<>5 then begin
                   SaveScreen(CurrentFile);
                   LoadScreen(5);
                End;
             End;
+            #7:Continue; // Ctrl-6
             #125:Begin // Alt-6
                If CurrentFile<>6 then begin
                   SaveScreen(CurrentFile);
                   LoadScreen(6);
                End;
             End;
+            #8:Continue; // Ctrl-7
             #126:Begin // Alt-7
                If CurrentFile<>7 then begin
                   SaveScreen(CurrentFile);
                   LoadScreen(7);
                End;
             End;
+            #9:Continue; // Ctrl-8
             #127:Begin // Alt-8
                If CurrentFile<>8 then begin
                   SaveScreen(CurrentFile);
                   LoadScreen(8);
                End;
             End;
+            #10:Continue; // Ctrl-9
             #128:Begin // Alt-9
                If CurrentFile<>9 then begin
                   SaveScreen(CurrentFile);
@@ -462,8 +475,6 @@ begin
             #129:Begin // Alt-0
             End;
 ////////////////////////////////////
-            #2:Begin // Ctrl-1
-            End;
             Else Writeln('#0 + #',Ord(Ch));
          End;
          Continue;
@@ -471,6 +482,7 @@ begin
       Else Begin
          Case Ch of
             #8:Begin // Backspace
+               Modified:=True;
                AtX:=WhereX;
                If (AtX>1) then begin
                   Delete(ActiveBuffer[WhereY],AtX-1,1);
@@ -482,6 +494,7 @@ begin
                End;
             End;
             #9:Begin // Tab
+               Modified:=True;
                AtX:=WhereX;
                If InsertMode then begin
                   If (AtX<Length(ActiveBuffer[WhereY])) then begin
@@ -502,6 +515,7 @@ begin
                ActualFile.setStrings((ActualTopLine+WhereY)-1, ActiveBuffer[WhereY]);
             End;
             #13:Begin // ENTER
+               Modified:=True;
                If InsertMode then begin
                   if WhereY<22 then begin
                      AtY:=WhereY;
@@ -545,6 +559,12 @@ begin
             End;
             #1:Begin // CTRL-A
             End;
+            #2:Begin // CTRL-B
+            End;
+            #3:Begin // CTRL-C
+            End;
+            #4:Begin // CTRL-D
+            End;
             #5:Begin // CTRL-E
 // EXIT
                Quit:=True;
@@ -570,6 +590,12 @@ begin
                   End;
                End;
             End;
+            #10:Begin // CTRL-J
+            End;
+            #11:Begin // CTRL-K
+            End;
+            #12:Begin // CTRL-L
+            End;
             #14:Begin // CTRL-N
 // NEW
             End;
@@ -585,6 +611,7 @@ begin
                      Write('File not found: '+Cmd);
                   End
                   Else Begin
+                     Modified:=False;
                      Files[CurrentFile].Filename:=Cmd;
                      ActualTopLine:=0;
                      ActualFile.LoadFromFile(Cmd);
@@ -595,9 +622,13 @@ begin
             End;
             #16:Begin // CTRL-P
             End;
+            #17:Begin // CTRL-Q
+            End;
             #18:Begin // CTRL-R
             End;
             #19:Begin // CTRL-S
+            End;
+            #20:Begin // CTRL-T
             End;
             #21:Begin // CTRL-U
             End;
@@ -614,9 +645,12 @@ begin
 // EXIT
                Quit:=True;
             End;
+            #25:Begin // CTRL-Y
+            End;
             #26:Begin // CTRL-Z
             End;
             #32..#255:Begin
+               Modified:=True;
                AtX:=WhereX;
                If InsertMode then begin
                   If (AtX<=Length(ActiveBuffer[WhereY])) then
