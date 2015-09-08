@@ -15,17 +15,17 @@ uses
    Strings;
 
 {$i readstr.inc}
+{$i ptg.inc}
 {$i mped.global.vars.inc}
 {$i mped.display.inc}
 
 procedure showHelp;
 begin
    Window(1,1,80,25);
-   TextColor(White);
    TextBackground(Blue);
-   ClrScr;
+   PWriteln('|11Modern Pascal |14Editor |15v1.0');
    Writeln('Modern Pascal Editor v1.0');
-   Writeln('');
+   PWriteln('|15usage: |07mped |05[|14options|05] |11filename|07');
    Writeln('usage: mped [options] filename');
    Halt(0);
 end;
@@ -82,7 +82,7 @@ begin
          Filename:='';
          ActualFile.Init();
          Modified:=False;
-         InsertMode:=False;
+         InsertMode:=True;
          ActualTopLine:=0;
          AtX:=1;
          AtY:=1;
@@ -627,6 +627,19 @@ begin
             #18:Begin // CTRL-R
             End;
             #19:Begin // CTRL-S
+               Files[CurrentFile].ActualFile.SetText(ActualFile.getText());
+               if (Files[CurrentFile].Filename='') then begin
+// get the filename
+               end;
+               Ws:=ChangeFileExtension(Files[CurrentFile].Filename,'.BAK');
+               PWriteXy(1,23,'|12Saving backup |10'+Ws);
+               ClrEol;
+               RenameFile(Files[CurrentFile].Filename, Ws);
+               PWriteXy(1,23,'|10Saving |14'+Files[CurrentFile].Filename);
+               ClrEol;
+               Files[CurrentFile].ActualFile.SaveToFile(Files[CurrentFile].Filename);
+               PWriteXy(1,23,'|14Saved |15'+Files[CurrentFile].Filename);
+               ClrEol;
             End;
             #20:Begin // CTRL-T
             End;
