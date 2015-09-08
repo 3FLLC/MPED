@@ -47,21 +47,20 @@ begin
    TextColor(LightBlue);
    Write(' List of available editor windows');
    TextBackground(Magenta);
-   TextColor(Yellow); GotoXy(2,2); Write('Alt-1'); TextColor(White); GotoXy(8,2); Write(Copy(Files[1].FileName,1,27));
-   TextColor(Yellow); GotoXy(2,3); Write('Alt-2'); TextColor(White); GotoXy(8,3); Write(Copy(Files[2].FileName,1,27));
-   TextColor(Yellow); GotoXy(2,4); Write('Alt-3'); TextColor(White); GotoXy(8,4); Write(Copy(Files[3].FileName,1,27));
-   TextColor(Yellow); GotoXy(2,5); Write('Alt-4'); TextColor(White); GotoXy(8,5); Write(Copy(Files[4].FileName,1,27));
-   TextColor(Yellow); GotoXy(2,6); Write('Alt-5'); TextColor(White); GotoXy(8,6); Write(Copy(Files[5].FileName,1,27));
-
-   TextColor(Yellow); GotoXy(37,2); Write('Alt-6'); TextColor(White); GotoXy(43,2); Write(Copy(Files[6].FileName,1,27));
-   TextColor(Yellow); GotoXy(37,3); Write('Alt-7'); TextColor(White); GotoXy(43,3); Write(Copy(Files[7].FileName,1,27));
-   TextColor(Yellow); GotoXy(37,4); Write('Alt-8'); TextColor(White); GotoXy(43,4); Write(Copy(Files[8].FileName,1,27));
-   TextColor(Yellow); GotoXy(37,5); Write('Alt-9'); TextColor(White); GotoXy(43,5); Write(Copy(Files[9].FileName,1,27));
+   GotoXy(1,2);
+   PWriteln(' |14Alt-1 |15'+Copy(Files[1].FileName,1,27));
+   PWriteln(' |14Alt-2 |15'+Copy(Files[2].FileName,1,27));
+   PWriteln(' |14Alt-3 |15'+Copy(Files[3].FileName,1,27));
+   PWriteln(' |14Alt-4 |15'+Copy(Files[4].FileName,1,27));
+   PWriteln(' |14Alt-5 |15'+Copy(Files[5].FileName,1,27));
+   PWriteXY(37,2,' |14Alt-6 |15'+Copy(Files[6].FileName,1,27));
+   PWriteXY(37,3,' |14Alt-7 |15'+Copy(Files[7].FileName,1,27));
+   PWriteXY(37,4,' |14Alt-8 |15'+Copy(Files[8].FileName,1,27));
+   PWriteXY(37,5,' |14Alt-9 |15'+Copy(Files[9].FileName,1,27));
    GotoXy(1,7);
    TextBackground(LightGray);
    ClrEol;
-   TextColor(LightRed);
-   Write(' Press any key to continue.');
+   PWrite('|12 Press any key to continue.');
    ReadKey;
    TextBackground(Black);
    Window(1,2,80,24);
@@ -114,11 +113,23 @@ begin
          ActiveBuffer[22]:=ActualFile.getStrings(22+ActualTopLine)
       else
          ActiveBuffer[22]:='';
+      GotoXy(1,1); DelLine; GotoXy(1,22);
+      Write(Copy(ActiveBuffer[22],1,80));
+      ClrEol;
+      If OldX>Length(ActiveBuffer[OldY]) then GotoXy(Length(ActiveBuffer[OldY])+1,OldY)
+      else GotoXy(OldX, OldY);
+      Exit;
    end
    else if HowMany=-1 then begin
       For Loop:=22 downto 2 do
          ActiveBuffer[Loop]:=ActiveBuffer[Loop-1];
       ActiveBuffer[1]:=ActualFile.getStrings(ActualTopLine);
+      GotoXy(1,1); InsLine; GotoXy(1,23); ClrEol; GotoXy(1,1);
+      Write(Copy(ActiveBuffer[1],1,80));
+      ClrEol;
+      If OldX>Length(ActiveBuffer[OldY]) then GotoXy(Length(ActiveBuffer[OldY])+1,OldY)
+      else GotoXy(OldX, OldY);
+      Exit;
    end
    else if HowMany=11 then begin // Ctrl-PgDn
       For Loop:=1 to 11 do begin
