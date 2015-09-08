@@ -82,3 +82,9 @@ begin
    pwrite(inp);
    WriteLn('');
 end;
+
+procedure pwriteXY(X,Y:Byte;inp:string);
+begin
+   GotoXy(X,Y);
+   pwrite(inp);
+end;
