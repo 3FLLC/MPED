@@ -3,85 +3,14 @@ begin
     Window(1,1,80,1);
     TextBackground(Cyan);
     ClrScr;
-    TextColor(LightBlue);
-    Write('«MPED» ');
-// [O]pen
-    TextColor(Yellow);
-    Write('[');
-    TextColor(White);
-    Write('O');
-    TextColor(Yellow);
-    Write(']');
-    TextColor(LightGray);
-    Write('pen  ');
-// [N]ew
-    TextColor(Yellow);
-    Write('[');
-    TextColor(White);
-    Write('N');
-    TextColor(Yellow);
-    Write(']');
-    TextColor(LightGray);
-    Write('ew  ');
-// [S]ave
-    TextColor(Yellow);
-    Write('[');
-    TextColor(White);
-    Write('S');
-    TextColor(Yellow);
-    Write(']');
-    TextColor(LightGray);
-    Write('ave  ');
-// [C]lose
-    TextColor(Yellow);
-    Write('[');
-    TextColor(White);
-    Write('C');
-    TextColor(Yellow);
-    Write(']');
-    TextColor(LightGray);
-    Write('lose  ');
-// [E]xit
-    TextColor(Yellow);
-    Write('[');
-    TextColor(White);
-    Write('E');
-    TextColor(Yellow);
-    Write(']');
-    TextColor(LightGray);
-    Write('xit  ');
-// [W]indows
-    TextColor(Yellow);
-    Write('[');
-    TextColor(White);
-    Write('W');
-    TextColor(Yellow);
-    Write(']');
-    TextColor(LightGray);
-    Write('indows  ');
-// [F]iles
-    TextColor(Yellow);
-    Write('[');
-    TextColor(White);
-    Write('F');
-    TextColor(Yellow);
-    Write(']');
-    TextColor(LightGray);
-    Write('iles  ');
-// F1=Help
-    TextColor(White);
-    Write('F1');
-    TextColor(Yellow);
-    Write('=');
-    TextColor(LightGray);
-    Write('HELP  ');
+    PWrite('|09 «MPED» |14[|15O|14]|07pen  |14[|15N|14]|07ew  |14[|15S|14]|07ave  |14[|15C|14]|07lose  |14[|15E|14]|07xit  |14[|15W|14]|07indows  |14[|15F|14]|07iles  |15F1|14=|07HELP');
     Window(1,2,80,24);
 end;
 
 procedure showStatus();
 var
    OldX,OldY:Word;
-   Ws:String;
+   W1,W2,Ws:String;
 
 begin
    OldX:=WhereX;
@@ -90,22 +19,12 @@ begin
    TextColor(White);
    TextBackground(Red);
    ClrScr;
-   Write(' ');
-   Ws:=IntToStr(OldX);
-   Write(PadLeft(Ws,4,' '),'|');
-   Ws:=IntToStr(OldY+ActualTopLine);
-   Write(PadLeft(Ws,4,' '),' ');
-   TextColor(Yellow);
-   If InsertMode then Write('INS')
-   else Write('OVR');
-   TextColor(LightGray);
-   write(' WIN[');
-   TextColor(LightCyan);
-   write(CurrentFile);
-   TextColor(LightGray);
-   write('] ');
-   Textcolor(Black);
-   write(ActualFile.getCount(),' TopLine:',ActualTopLine);
+   W1:=IntToStr(OldX);
+   W2:=IntToStr(OldY+ActualTopLine);
+   If InsertMode then Ws:='INS'
+   else Ws:='OVR';
+   PWrite(' '+PadLeft(W1,4,' ')+':'+PadLeft(W2,4,' ')+' |14'+Ws+'|07 WIN[|11'+IntToStr(CurrentFile)+'|07] |00'+
+      IntToStr(ActualFile.getCount())+' TopLine:'+IntToStr(ActualTopLine));
    Window(1,2,80,24);
    GotoXy(OldX,OldY);
    TextColor(LightGreen);
